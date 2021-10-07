@@ -84,6 +84,11 @@ app.get("/:site", validateRequest, executeScript, (req, res, next) => {
   res.send(req.webhookResponse);
 });
 
+app.post("/:site", validateRequest, executeScript, (req, res, next) => {
+  res.status = 200;
+  res.send(req.webhookResponse);
+});
+
 // error handler
 app.use(function (err, req, res, next) {
   res.status(err.status ? err.status : 500);

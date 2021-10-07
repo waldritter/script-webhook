@@ -1,0 +1,14 @@
+{
+  "name": "webhook",
+  "version": "1.0.0",
+  "author": "Christian Mocek",
+  "license": "ISC",
+  "private": true,
+  "scripts": {
+    "start": "node webhook.js"
+  },
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1"
+  }
+}

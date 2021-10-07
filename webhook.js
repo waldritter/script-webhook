@@ -49,10 +49,10 @@ const executeScript = (req, res, next) => {
       }
     })
     .join(" ");
-  let shellCommand = `sh ${__dirname}/scripts/${req.params.site}.sh ${args}`;
+  let shellCommand = `ts sh ${__dirname}/scripts/${req.params.site}.sh ${args}`;
 
   // Start deployment process
-  console.log("Beginning script:", shellCommand);
+  console.log("Queuing script:", shellCommand);
 
   // Execute our shell script
   exec(shellCommand, function (error, stdout, stderr) {
@@ -67,7 +67,7 @@ const executeScript = (req, res, next) => {
     console.log("script complete.");
     return next();
   });
-};;;
+};
 
 // -----------------------------------------------------------------------------
 

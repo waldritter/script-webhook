@@ -9,6 +9,7 @@ ENTRYPOINT [ "node", "webhook.js" ]
 
 ENV PORT=8080
 
-RUN apk add --no-cache rsync git openssh vim && \
+RUN apk add --no-cache rsync git openssh ts && \
     npm config set ignore-scripts false && \
-    npm install
+    npm install && \
+    ts -S 1

@@ -51,12 +51,9 @@ const executeScript = (req, res, next) => {
     .join(" ");
   let shellCommand = `ts sh ${__dirname}/scripts/${req.params.site}.sh ${args}`;
 
-  // Start deployment process
-  console.log("Queuing script:", shellCommand);
-
   // Execute our shell script
   exec(shellCommand, function (error, stdout, stderr) {
-    console.log(stdout); // feedback
+    console.log(`Queued: ${shellCommand} with ID ${stdout}`);
     if (stderr) console.log("stderr: " + stderr); // oh noes
     if (error) {
       error.status = 500;
@@ -64,7 +61,6 @@ const executeScript = (req, res, next) => {
     } else {
       req.webhookResponse = stdout;
     }
-    console.log("script complete.");
     return next();
   });
 };

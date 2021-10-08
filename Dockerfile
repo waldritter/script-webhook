@@ -12,6 +12,7 @@ ENV PORT=8080
 WORKDIR /app
 
 RUN apk add --no-cache \
+    gawk \
     rsync \
     git \
     openssh \

@@ -23,18 +23,40 @@ const validateRequest = (req, res, next) => {
     err.status = 401;
     return next(err);
   }
-
-  if (!fs.existsSync(__dirname + "/scripts/" + req.params.site + ".sh")) {
-    const err = new Error();
-    err.status = 401;
-    return next(err);
-  }
   next();
 };
 
 // -----------------------------------------------------------------------------
 
+const executeCommand = (command, req, next, info) => {
+  exec(command, function (error, stdout, stderr) {
+    if (info) {
+      console.log(info);
+    }
+
+    if (stderr) {
+      console.log("stderr: " + stderr);
+    }
+
+    if (error) {
+      error.status = 500;
+      return next(error);
+    } else {
+      req.webhookResponse = stdout;
+    }
+    return next();
+  });
+};
+
+// -----------------------------------------------------------------------------
+
 const executeScript = (req, res, next) => {
+  if (!fs.existsSync(__dirname + "/scripts/" + req.params.script + ".sh")) {
+    const err = new Error();
+    err.status = 401;
+    return next(err);
+  }
+
   const args = Object.keys(req.query)
     .filter((key) => key !== "token")
     .map((key) => {
@@ -49,20 +71,22 @@ const executeScript = (req, res, next) => {
       }
     })
     .join(" ");
-  let shellCommand = `ts sh ${__dirname}/scripts/${req.params.site}.sh ${args}`;
+  let shellCommand = `ts sh ${__dirname}/scripts/${req.params.script}.sh ${args}`;
 
   // Execute our shell script
-  exec(shellCommand, function (error, stdout, stderr) {
-    console.log(`Queued: ${shellCommand} with ID ${stdout}`);
-    if (stderr) console.log("stderr: " + stderr); // oh noes
-    if (error) {
-      error.status = 500;
-      return next(error);
-    } else {
-      req.webhookResponse = stdout;
-    }
-    return next();
-  });
+  executeCommand(
+    shellCommand,
+    req,
+    next,
+    `${new Date().toISOString()} - Running: ${shellCommand}`,
+  );
+};
+
+// -----------------------------------------------------------------------------
+
+const sendCommandOutputAsResponse = (req, res, next) => {
+  res.status = 200;
+  res.send(req.webhookResponse);
 };
 
 // -----------------------------------------------------------------------------
@@ -70,22 +94,60 @@ const executeScript = (req, res, next) => {
 const app = express();
 app.disable("x-powered-by");
 
+// -----------------------------------------------------------------------------
+
 app.get(["/", "/favicon.ico"], (req, res, next) => {
   res.status = 200;
   res.send();
 });
 
-app.get("/:site", validateRequest, executeScript, (req, res, next) => {
-  res.status = 200;
-  res.send(req.webhookResponse);
-});
+// -----------------------------------------------------------------------------
+// Logging from ts
+// -----------------------------------------------------------------------------
 
-app.post("/:site", validateRequest, executeScript, (req, res, next) => {
-  res.status = 200;
-  res.send(req.webhookResponse);
-});
+app.get(
+  "/logs",
+  validateRequest,
+  (req, res, next) => executeCommand("ts -l", req, next),
+  sendCommandOutputAsResponse,
+);
 
+// -----------------------------------------------------------------------------
+
+app.get(
+  "/logs/:id",
+  validateRequest,
+  (req, res, next) => executeCommand(`ts -c ${req.params.id}`, req, next),
+  sendCommandOutputAsResponse,
+);
+
+// -----------------------------------------------------------------------------
+
+app.delete(
+  "/logs",
+  validateRequest,
+  (req, res, next) =>
+    executeCommand(
+      `ts | grep finished | /usr/bin/awk '{ print $3 }' | xargs rm -f && ts -C`,
+      req,
+      next,
+    ),
+  sendCommandOutputAsResponse,
+);
+
+// -----------------------------------------------------------------------------
+// Script routes
+// -----------------------------------------------------------------------------
+
+app.get("/:script", validateRequest, executeScript, sendCommandOutputAsResponse);
+
+// -----------------------------------------------------------------------------
+
+app.post("/:script", validateRequest, executeScript, sendCommandOutputAsResponse);
+
+// -----------------------------------------------------------------------------
 // error handler
+// -----------------------------------------------------------------------------
 app.use(function (err, req, res, next) {
   res.status(err.status ? err.status : 500);
   res.send(err.message);
